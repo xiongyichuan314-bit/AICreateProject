@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Data Entry Website</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .form-group { margin-bottom: 15px; }
+        input[type="text"] { width: 300px; padding: 8px; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .results { margin-top: 20px; }
+        .item { padding: 10px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <h1>Data Entry Website</h1>
+    
+    <div class="form-group">
+        <form id="dataForm">
+            <input type="text" id="content" name="content" placeholder="Enter your information here" required>
+            <button type="submit">Save Information</button>
+        </form>
+    </div>
+    
+    <div class="form-group">
+        <button onclick="loadAllData()">View All Saved Information</button>
+        <button onclick="searchData()">Search Information</button>
+    </div>
+    
+    <div id="results" class="results"></div>
+
+    <script>
+        document.getElementById('dataForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const content = document.getElementById('content').value;
+            
+            try {
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content: content })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('content').value = '';
+                    alert('Information saved successfully!');
+                } else {
+                    alert('Error saving information');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error saving information');
+            }
+        });
+        
+        async function loadAllData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function searchData() {
+            const query = prompt("Enter search term:");
+            if (query) {
+                try {
+                    const response = await fetch('/api/search?q=' + encodeURIComponent(query));
+                    const data = await response.json();
+                    displayResults(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<p>No data found.</p>';
+                return;
+            }
+            
+            let html = '<h3>Results:</h3>';
+            data.forEach(item => {
+                html += '<div class="item"><strong>ID:</strong> ' + item.id + 
+                       '<br><strong>Content:</strong> ' + item.content + 
+                       '<br><strong>Date:</strong> ' + item.timestamp + '</div>';
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
