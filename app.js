@@ -9,9 +9,9 @@ const PORT = 8081;
 // 创建数据库
 const db = new sqlite3.Database('./data.db');
 
-// 创建表
+// 创建表（如果不存在）
 db.serialize(() => {
-  db.run("CREATE TABLE data (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)");
+  db.run("CREATE TABLE IF NOT EXISTS data (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)");
 });
 
 // 设置中间件
