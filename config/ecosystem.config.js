@@ -3,8 +3,8 @@ module.exports = {
     // 后端API服务器
     {
       name: 'dynamic-api',
-      script: '/home/waxiong/dynamic-website/api/server.js',
-      interpreter: '/home/waxiong/.nvm/versions/node/v22.22.0/bin/node',
+      script: './api/server.js',
+      cwd: '/home/waxiong/dynamic-website',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -19,9 +19,9 @@ module.exports = {
         PORT: 8081,
         HOST: '0.0.0.0'
       },
-      error_file: '/home/waxiong/dynamic-website/logs/api-error.log',
-      out_file: '/home/waxiong/dynamic-website/logs/api-out.log',
-      log_file: '/home/waxiong/dynamic-website/logs/api-combined.log',
+      error_file: './logs/api-error.log',
+      out_file: './logs/api-out.log',
+      log_file: './logs/api-combined.log',
       time: true,
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss'
@@ -29,8 +29,8 @@ module.exports = {
     // 前端服务器
     {
       name: 'dynamic-client',
-      script: '/home/waxiong/dynamic-website/client/server.js',
-      interpreter: '/home/waxiong/.nvm/versions/node/v22.22.0/bin/node',
+      script: './client/server.js',
+      cwd: '/home/waxiong/dynamic-website',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -45,9 +45,9 @@ module.exports = {
         CLIENT_PORT: 3000,
         CLIENT_HOST: '0.0.0.0'
       },
-      error_file: '/home/waxiong/dynamic-website/logs/client-error.log',
-      out_file: '/home/waxiong/dynamic-website/logs/client-out.log',
-      log_file: '/home/waxiong/dynamic-website/logs/client-combined.log',
+      error_file: './logs/client-error.log',
+      out_file: './logs/client-out.log',
+      log_file: './logs/client-combined.log',
       time: true,
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss'
@@ -62,7 +62,7 @@ module.exports = {
       ref: 'origin/main',
       repo: 'git@github.com:xiongyichuan314-bit/AICreateProject.git',
       path: '/home/waxiong/dynamic-website',
-      'post-deploy': 'npm install && pm2 reload ecosystem.config.js --env production'
+      'post-deploy': 'npm install && pm2 reload config/ecosystem.config.js --env production'
     }
   }
 };

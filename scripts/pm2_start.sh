@@ -11,38 +11,16 @@ if ! command -v pm2 &> /dev/null; then
     exit 1
 fi
 
-# 检查Node.js是否可用
-NODE_PATH="/home/waxiong/.nvm/versions/node/v22.22.0/bin/node"
-if [ ! -f "$NODE_PATH" ]; then
-    echo "错误: 找不到Node.js"
-    exit 1
-fi
-
 # 停止已存在的PM2进程（如果存在）
 echo "停止已存在的进程..."
 pm2 delete dynamic-api dynamic-client 2>/dev/null || true
 
-# 启动后端API服务器
-echo "启动后端API服务器 (端口: 8081)..."
-pm2 start "$NODE_PATH" --name "dynamic-api" -- \
-    /home/waxiong/dynamic-website/api/server.js \
-    --log /home/waxiong/dynamic-website/logs/api.log \
-    --error /home/waxiong/dynamic-website/logs/api-error.log \
-    --output /home/waxiong/dynamic-website/logs/api-out.log
+# 使用PM2配置文件启动
+echo "使用PM2配置文件启动..."
+pm2 start config/ecosystem.config.js
 
-# 等待后端启动
-sleep 2
-
-# 启动前端服务器
-echo "启动前端服务器 (端口: 3000)..."
-pm2 start "$NODE_PATH" --name "dynamic-client" -- \
-    /home/waxiong/dynamic-website/client/server.js \
-    --log /home/waxiong/dynamic-website/logs/client.log \
-    --error /home/waxiong/dynamic-website/logs/client-error.log \
-    --output /home/waxiong/dynamic-website/logs/client-out.log
-
-# 等待前端启动
-sleep 2
+# 等待服务器启动
+sleep 3
 
 # 保存PM2配置以便开机自启
 pm2 save
