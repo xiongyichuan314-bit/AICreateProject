@@ -1,327 +1,331 @@
-// API Base URL
-const API_BASE_URL = 'http://localhost:8081';
+/**
+ * 主应用程序文件
+ * 重构后的前端应用
+ */
 
-// DOM Elements
-const dataForm = document.getElementById('dataForm');
-const contentInput = document.getElementById('content');
-const searchInput = document.getElementById('searchInput');
-const searchBtn = document.getElementById('searchBtn');
-const refreshBtn = document.getElementById('refreshBtn');
-const viewAllBtn = document.getElementById('viewAllBtn');
-const dataContainer = document.getElementById('dataContainer');
-const totalCount = document.getElementById('totalCount');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const paginationNav = document.getElementById('paginationNav');
-const paginationList = document.getElementById('paginationList');
+import dataManager from './js/modules/dataManager.js';
+import uiService from './js/modules/uiService.js';
 
-// Modal Elements
-const editModal = document.getElementById('editModal');
-const editForm = document.getElementById('editForm');
-const editId = document.getElementById('editId');
-const editContent = document.getElementById('editContent');
-const saveEditBtn = document.getElementById('saveEditBtn');
-
-// State
-let currentPage = 1;
-let totalPages = 1;
-let currentSearch = '';
-
-// Initialize the app
-document.addEventListener('DOMContentLoaded', function() {
-    loadData(currentPage);
+class App {
+  constructor() {
+    // DOM元素
+    this.dataForm = document.getElementById('dataForm');
+    this.contentInput = document.getElementById('content');
+    this.searchInput = document.getElementById('searchInput');
+    this.searchBtn = document.getElementById('searchBtn');
+    this.refreshBtn = document.getElementById('refreshBtn');
+    this.viewAllBtn = document.getElementById('viewAllBtn');
+    this.dataContainer = document.getElementById('dataContainer');
+    this.totalCount = document.getElementById('totalCount');
     
-    // Event listeners
-    dataForm.addEventListener('submit', handleFormSubmit);
-    searchBtn.addEventListener('click', handleSearch);
-    searchInput.addEventListener('keypress', function(e) {
+    // 模态框元素
+    this.editModal = document.getElementById('editModal');
+    this.editId = document.getElementById('editId');
+    this.editContent = document.getElementById('editContent');
+    this.saveEditBtn = document.getElementById('saveEditBtn');
+    
+    // 绑定方法
+    this.init = this.init.bind(this);
+    this.handleFormSubmit = this.handleFormSubmit.bind(this);
+    this.handleSearch = this.handleSearch.bind(this);
+    this.handleRefresh = this.handleRefresh.bind(this);
+    this.handleViewAll = this.handleViewAll.bind(this);
+    this.handleEditSave = this.handleEditSave.bind(this);
+    this.handlePageChange = this.handlePageChange.bind(this);
+    this.displayData = this.displayData.bind(this);
+    this.editItem = this.editItem.bind(this);
+    this.deleteItem = this.deleteItem.bind(this);
+  }
+
+  /**
+   * 初始化应用
+   */
+  async init() {
+    try {
+      // 检查API健康状态
+      const isHealthy = await dataManager.checkHealth();
+      if (!isHealthy) {
+        uiService.showAlert('API服务不可用，请检查后端服务是否运行', 'warning');
+      }
+      
+      // 加载初始数据
+      await this.loadData();
+      
+      // 绑定事件监听器
+      this.bindEvents();
+      
+      // 初始化Bootstrap模态框
+      this.bsEditModal = new bootstrap.Modal(this.editModal);
+      
+      console.log('应用程序初始化完成');
+    } catch (error) {
+      console.error('应用程序初始化失败:', error);
+      uiService.showAlert('应用程序初始化失败', 'danger');
+    }
+  }
+
+  /**
+   * 绑定事件监听器
+   */
+  bindEvents() {
+    // 表单提交
+    if (this.dataForm) {
+      this.dataForm.addEventListener('submit', this.handleFormSubmit);
+    }
+    
+    // 搜索按钮
+    if (this.searchBtn) {
+      this.searchBtn.addEventListener('click', this.handleSearch);
+    }
+    
+    // 搜索输入框回车键
+    if (this.searchInput) {
+      this.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            handleSearch();
+          this.handleSearch();
         }
-    });
-    refreshBtn.addEventListener('click', () => loadData(currentPage));
-    viewAllBtn.addEventListener('click', () => {
-        currentSearch = '';
-        searchInput.value = '';
-        loadData(1);
-    });
-    saveEditBtn.addEventListener('click', handleEditSave);
+      });
+    }
     
-    // Initialize Bootstrap modal
-    const bsEditModal = new bootstrap.Modal(editModal);
-});
+    // 刷新按钮
+    if (this.refreshBtn) {
+      this.refreshBtn.addEventListener('click', this.handleRefresh);
+    }
+    
+    // 查看全部按钮
+    if (this.viewAllBtn) {
+      this.viewAllBtn.addEventListener('click', this.handleViewAll);
+    }
+    
+    // 保存编辑按钮
+    if (this.saveEditBtn) {
+      this.saveEditBtn.addEventListener('click', this.handleEditSave);
+    }
+    
+    // 模态框隐藏时重置表单
+    if (this.editModal) {
+      this.editModal.addEventListener('hidden.bs.modal', () => {
+        this.editId.value = '';
+        this.editContent.value = '';
+      });
+    }
+  }
 
-// Handle form submission
-async function handleFormSubmit(e) {
+  /**
+   * 加载数据
+   * @param {number} page - 页码
+   * @param {string} searchQuery - 搜索关键词
+   */
+  async loadData(page = 1, searchQuery = '') {
+    try {
+      const result = await dataManager.loadData(page, searchQuery);
+      
+      if (result.success) {
+        this.displayData(result.data, result.pagination, result.searchQuery);
+      }
+    } catch (error) {
+      console.error('加载数据失败:', error);
+    }
+  }
+
+  /**
+   * 显示数据
+   * @param {Array} data - 数据数组
+   * @param {Object} pagination - 分页信息
+   * @param {string} searchQuery - 搜索关键词
+   */
+  displayData(data, pagination, searchQuery = '') {
+    if (!this.dataContainer) return;
+    
+    // 更新数据总数
+    uiService.updateTotalCount(data.length);
+    
+    // 显示数据或空状态
+    if (!data || data.length === 0) {
+      const message = searchQuery 
+        ? `没有找到包含"${searchQuery}"的数据`
+        : '暂无数据，请添加第一条数据';
+      
+      this.dataContainer.innerHTML = `
+        <div class="text-center py-5">
+          <div class="mb-3">
+            <i class="fas fa-inbox fa-3x text-muted"></i>
+          </div>
+          <h5 class="text-muted">${message}</h5>
+        </div>
+      `;
+      return;
+    }
+    
+    // 生成数据HTML
+    const html = data.map(item => this.createDataItemHTML(item, searchQuery)).join('');
+    this.dataContainer.innerHTML = html;
+    
+    // 更新分页控件
+    if (pagination) {
+      uiService.updatePagination(pagination, this.handlePageChange);
+    }
+  }
+
+  /**
+   * 创建数据项HTML
+   * @param {Object} item - 数据项
+   * @param {string} searchQuery - 搜索关键词
+   * @returns {string} HTML字符串
+   */
+  createDataItemHTML(item, searchQuery = '') {
+    const formattedDate = uiService.formatDate(item.timestamp);
+    const highlightedContent = uiService.highlightSearchTerms(item.content, searchQuery);
+    
+    return `
+      <div class="data-item card mb-3 fade-in ${searchQuery ? 'border-warning' : ''}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <span class="badge bg-secondary me-2">#${item.id}</span>
+              <small class="text-muted">
+                <i class="fas fa-clock me-1"></i>${formattedDate}
+              </small>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="app.editItem(${item.id}, '${uiService.escapeHtml(item.content)}')">
+                <i class="fas fa-edit me-1"></i>编辑
+              </button>
+              <button class="btn btn-outline-danger" onclick="app.deleteItem(${item.id})">
+                <i class="fas fa-trash me-1"></i>删除
+              </button>
+            </div>
+          </div>
+          <div class="data-content mt-2">
+            ${highlightedContent}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 处理表单提交
+   * @param {Event} e - 事件对象
+   */
+  async handleFormSubmit(e) {
     e.preventDefault();
     
-    const content = contentInput.value.trim();
+    const content = this.contentInput?.value.trim();
     if (!content) {
-        showAlert('Please enter some content', 'danger');
-        return;
+      uiService.showAlert('请输入内容', 'warning');
+      return;
     }
     
     try {
-        showLoading(true);
-        
-        const response = await fetch(`${API_BASE_URL}/api/data`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ content })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            contentInput.value = '';
-            showAlert('Entry saved successfully!', 'success');
-            loadData(currentPage); // Refresh the list
-        } else {
-            showAlert(result.error || 'Failed to save entry', 'danger');
-        }
+      await dataManager.createData(content);
+      
+      // 清空输入框
+      if (this.contentInput) {
+        this.contentInput.value = '';
+      }
     } catch (error) {
-        showAlert('Network error. Please try again.', 'danger');
-    } finally {
-        showLoading(false);
+      console.error('创建数据失败:', error);
     }
-}
+  }
 
-// Load data with pagination
-async function loadData(page = 1) {
-    showLoading(true);
-    
+  /**
+   * 处理搜索
+   */
+  async handleSearch() {
+    const query = this.searchInput?.value.trim() || '';
+    await this.loadData(1, query);
+  }
+
+  /**
+   * 处理刷新
+   */
+  async handleRefresh() {
+    const state = dataManager.getState();
+    await this.loadData(state.currentPage, state.currentSearch);
+  }
+
+  /**
+   * 处理查看全部
+   */
+  async handleViewAll() {
+    if (this.searchInput) {
+      this.searchInput.value = '';
+    }
+    await this.loadData(1, '');
+  }
+
+  /**
+   * 处理页面改变
+   * @param {number} page - 页码
+   */
+  async handlePageChange(page) {
+    await this.loadData(page, dataManager.getState().currentSearch);
+  }
+
+  /**
+   * 编辑数据项
+   * @param {number} id - 数据ID
+   * @param {string} content - 数据内容
+   */
+  editItem(id, content) {
+    if (this.editId && this.editContent) {
+      this.editId.value = id;
+      this.editContent.value = content;
+      
+      if (this.bsEditModal) {
+        this.bsEditModal.show();
+      }
+    }
+  }
+
+  /**
+   * 删除数据项
+   * @param {number} id - 数据ID
+   */
+  async deleteItem(id) {
     try {
-        let url = `${API_BASE_URL}/api/data?page=${page}&limit=10`;
-        if (currentSearch) {
-            url = `${API_BASE_URL}/api/search?q=${encodeURIComponent(currentSearch)}&page=${page}&limit=10`;
-        }
-        
-        const response = await fetch(url);
-        const result = await response.json();
-        
-        if (response.ok) {
-            displayData(result.data);
-            updatePagination(result.pagination);
-        } else {
-            showAlert(result.error || 'Failed to load data', 'danger');
-        }
+      await dataManager.deleteData(id);
     } catch (error) {
-        showAlert('Network error. Please try again.', 'danger');
-    } finally {
-        showLoading(false);
+      console.error('删除数据失败:', error);
     }
-}
+  }
 
-// Display data in the container
-function displayData(data) {
-    if (!data || data.length === 0) {
-        dataContainer.innerHTML = '<div class="alert alert-info">No data found.</div>';
-        totalCount.textContent = '0';
-        return;
-    }
+  /**
+   * 处理编辑保存
+   */
+  async handleEditSave() {
+    const id = this.editId?.value;
+    const content = this.editContent?.value.trim();
     
-    totalCount.textContent = data.length;
-    
-    const html = data.map(item => `
-        <div class="data-item fade-in ${currentSearch ? 'search-result' : ''}">
-            <div class="item-header">
-                <span class="item-id">#${item.id}</span>
-                <span class="item-date">${formatDate(item.timestamp)}</span>
-            </div>
-            <div class="item-content">
-                ${highlightSearchTerms(item.content, currentSearch)}
-            </div>
-            <div class="item-actions">
-                <button class="btn btn-sm btn-outline-primary btn-icon" onclick="editItem(${item.id}, '${escapeHtml(item.content)}')">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteItem(${item.id})">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    `).join('');
-    
-    dataContainer.innerHTML = html;
-}
-
-// Update pagination controls
-function updatePagination(pagination) {
-    currentPage = pagination.currentPage;
-    totalPages = pagination.totalPages || 1;
-    
-    if (totalPages <= 1) {
-        paginationNav.style.display = 'none';
-        return;
-    }
-    
-    paginationNav.style.display = 'block';
-    
-    let paginationHtml = '';
-    
-    // Previous button
-    if (currentPage > 1) {
-        paginationHtml += `<li class="page-item">
-            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
-        </li>`;
-    }
-    
-    // Page numbers
-    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
-        paginationHtml += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-            <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
-        </li>`;
-    }
-    
-    // Next button
-    if (currentPage < totalPages) {
-        paginationHtml += `<li class="page-item">
-            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
-        </li>`;
-    }
-    
-    paginationList.innerHTML = paginationHtml;
-}
-
-// Change page
-function changePage(page) {
-    loadData(page);
-}
-
-// Handle search
-async function handleSearch() {
-    currentSearch = searchInput.value.trim();
-    if (!currentSearch) {
-        loadData(1);
-        return;
-    }
-    
-    loadData(1);
-}
-
-// Edit item
-function editItem(id, content) {
-    editId.value = id;
-    editContent.value = content;
-    
-    const modal = bootstrap.Modal.getInstance(editModal) || new bootstrap.Modal(editModal);
-    modal.show();
-}
-
-// Handle edit save
-async function handleEditSave() {
-    const id = editId.value;
-    const content = editContent.value.trim();
-    
-    if (!content) {
-        showAlert('Please enter content', 'danger');
-        return;
+    if (!id || !content) {
+      uiService.showAlert('请填写完整信息', 'warning');
+      return;
     }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/data/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ content })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            const modal = bootstrap.Modal.getInstance(editModal);
-            modal.hide();
-            showAlert('Entry updated successfully!', 'success');
-            loadData(currentPage);
-        } else {
-            showAlert(result.error || 'Failed to update entry', 'danger');
-        }
+      await dataManager.updateData(parseInt(id), content);
+      
+      // 关闭模态框
+      if (this.bsEditModal) {
+        this.bsEditModal.hide();
+      }
     } catch (error) {
-        showAlert('Network error. Please try again.', 'danger');
+      console.error('更新数据失败:', error);
     }
+  }
 }
 
-// Delete item
-async function deleteItem(id) {
-    if (!confirm('Are you sure you want to delete this entry?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/data/${id}`, {
-            method: 'DELETE'
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            showAlert('Entry deleted successfully!', 'success');
-            loadData(currentPage);
-        } else {
-            showAlert(result.error || 'Failed to delete entry', 'danger');
-        }
-    } catch (error) {
-        showAlert('Network error. Please try again.', 'danger');
-    }
-}
+// 创建应用实例并初始化
+const app = new App();
 
-// Utility functions
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-}
+// 将应用实例暴露给全局作用域，供内联事件处理器使用
+window.app = app;
 
-function highlightSearchTerms(text, searchTerm) {
-    if (!searchTerm) return escapeHtml(text);
-    
-    const regex = new RegExp(`(${searchTerm})`, 'gi');
-    return text.replace(regex, '<mark class="highlight">$1</mark>');
-}
+// 当DOM加载完成时初始化应用
+document.addEventListener('DOMContentLoaded', () => {
+  app.init();
+});
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function showAlert(message, type = 'info') {
-    // Remove existing alerts
-    const existingAlert = document.querySelector('.alert-fixed');
-    if (existingAlert) {
-        existingAlert.remove();
-    }
-    
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-fixed`;
-    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(alertDiv);
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
-}
-
-function showLoading(show) {
-    if (show) {
-        loadingIndicator.style.display = 'block';
-        dataContainer.style.opacity = '0.5';
-    } else {
-        loadingIndicator.style.display = 'none';
-        dataContainer.style.opacity = '1';
-    }
-}
-
-// Expose functions to global scope for inline event handlers
-window.editItem = editItem;
-window.deleteItem = deleteItem;
-window.changePage = changePage;
+// 导出应用实例（如果需要模块化）
+export default app;

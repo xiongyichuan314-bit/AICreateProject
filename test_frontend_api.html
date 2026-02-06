@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试前端API调用</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>测试前端API调用</h1>
+    <p>这个页面测试前端是否能正确调用后端API。</p>
+    
+    <div>
+        <button onclick="testHealthCheck()">测试健康检查</button>
+        <button onclick="testGetData()">测试获取数据</button>
+        <button onclick="testAll()">测试所有API</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE_URL = 'http://localhost:8081';
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(title, content, isSuccess) {
+            const div = document.createElement('div');
+            div.className = `test-result ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            resultsDiv.appendChild(div);
+        }
+        
+        async function testHealthCheck() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                addResult('健康检查', JSON.stringify(data, null, 2), response.ok);
+            } catch (error) {
+                addResult('健康检查', `错误: ${error.message}`, false);
+            }
+        }
+        
+        async function testGetData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/data?page=1&limit=10`);
+                const data = await response.json();
+                addResult('获取数据', JSON.stringify(data, null, 2), response.ok);
+            } catch (error) {
+                addResult('获取数据', `错误: ${error.message}`, false);
+            }
+        }
+        
+        async function testAll() {
+            resultsDiv.innerHTML = '';
+            await testHealthCheck();
+            await testGetData();
+        }
+        
+        // 页面加载时自动测试
+        window.onload = testAll;
+    </script>
+</body>
+</html>
