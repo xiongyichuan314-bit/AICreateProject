@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const dataRoutes = require('./dataRoutes');
+const emailRoutes = require('./email/emailRoutes');
 
 // API信息路由
 router.get('/', (req, res) => {
@@ -21,6 +22,9 @@ router.get('/', (req, res) => {
       'DELETE /api/data/:id': '删除数据',
       'GET /api/data/stats/summary': '获取数据统计信息',
       'GET /api/data/health': '健康检查',
+      'GET /api/email/recent': '获取最近N封邮件',
+      'GET /api/email/config': '获取邮箱配置状态',
+      'GET /api/email/health': '邮件服务健康检查',
     },
     timestamp: new Date().toISOString(),
   });
@@ -28,6 +32,9 @@ router.get('/', (req, res) => {
 
 // 数据路由
 router.use('/data', dataRoutes);
+
+// 邮件路由
+router.use('/email', emailRoutes);
 
 // 404处理 - 捕获所有未匹配的路由
 router.use((req, res) => {
