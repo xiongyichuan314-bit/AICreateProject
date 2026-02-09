@@ -4,7 +4,7 @@ module.exports = {
     {
       name: 'dynamic-api',
       script: './api/server.js',
-      cwd: '/home/waxiong/dynamic-website',
+      cwd: '/home/waxiong/Projects/AICreateProject',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -30,7 +30,7 @@ module.exports = {
     {
       name: 'dynamic-client',
       script: './client/server.js',
-      cwd: '/home/waxiong/dynamic-website',
+      cwd: '/home/waxiong/Projects/AICreateProject',
       instances: 1,
       autorestart: true,
       watch: false,

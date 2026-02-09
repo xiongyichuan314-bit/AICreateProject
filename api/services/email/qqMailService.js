@@ -87,14 +87,16 @@ class QQMailService {
    */
   async fetchEmailsWithParser(limit) {
     return new Promise((resolve, reject) => {
-      const imap = new Imap({
-        user: this.config.user,
-        password: this.config.password,
-        host: this.config.host,
-        port: this.config.port,
-        tls: this.config.secure,
-        tlsOptions: { rejectUnauthorized: false }
-      });
+    const imap = new Imap({
+      user: this.config.user,
+      password: this.config.password,
+      host: this.config.host,
+      port: this.config.port,
+      tls: this.config.secure,
+      tlsOptions: { rejectUnauthorized: false },
+      authTimeout: 10000, // 10秒认证超时
+      autotls: 'always' // 始终使用TLS
+    });
 
       const emails = [];
       let opened = false;
