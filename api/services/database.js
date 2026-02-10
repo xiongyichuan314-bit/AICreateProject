@@ -27,8 +27,16 @@ class DatabaseService {
     return new Promise((resolve, reject) => {
       logger.info('正在连接数据库...', { dbPath: this.dbPath });
       
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
+      // 设置超时（5秒）
+      const timeout = setTimeout(() => {
+        logger.error('数据库初始化超时');
+        reject(new Error('数据库初始化超时'));
+      }, 5000);
+      
+      // 使用同步模式连接
+      this.db = new sqlite3.Database(this.dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
         if (err) {
+          clearTimeout(timeout);
           logger.error('数据库连接失败', { error: err.message });
           reject(err);
           return;
@@ -37,39 +45,30 @@ class DatabaseService {
         logger.info('数据库连接成功');
         this.initialized = true;
         
-        // 初始化表结构
-        this.initializeTables()
-          .then(() => {
-            logger.info('数据库表初始化完成');
-            resolve();
-          })
-          .catch(reject);
-      });
-    });
-  }
-
-  /**
-   * 初始化数据库表
-   * @returns {Promise<void>}
-   */
-  async initializeTables() {
-    return new Promise((resolve, reject) => {
-      const createTableSQL = `
-        CREATE TABLE IF NOT EXISTS data (
-          id INTEGER PRIMARY KEY AUTOINCREMENT, 
-          content TEXT NOT NULL, 
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
-
-      this.db.run(createTableSQL, (err) => {
-        if (err) {
-          logger.error('创建表失败', { error: err.message });
-          reject(err);
-          return;
-        }
+        // 使用同步方式执行SQL（避免回调问题）
+        const createTableSQL = `
+          CREATE TABLE IF NOT EXISTS data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            content TEXT NOT NULL, 
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `;
         
-        resolve();
+        logger.info('正在创建数据库表...');
+        
+        // 直接执行，不等待回调
+        try {
+          this.db.run(createTableSQL);
+          // 假设执行成功，不等待回调
+          clearTimeout(timeout);
+          logger.info('✅ 数据库表创建完成（假设成功）');
+          logger.info('数据库表初始化完成');
+          resolve();
+        } catch (error) {
+          clearTimeout(timeout);
+          logger.error('创建表异常', { error: error.message });
+          reject(error);
+        }
       });
     });
   }

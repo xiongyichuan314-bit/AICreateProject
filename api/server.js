@@ -152,8 +152,10 @@ async function startServer() {
     // 初始化数据库
     logger.info('正在初始化数据库...');
     await databaseService.initialize();
+    logger.info('✅ 数据库初始化完成');
 
     // 启动服务器
+    logger.info(`正在启动服务器，监听 ${config.server.host}:${config.server.port}...`);
     server = app.listen(config.server.port, config.server.host, () => {
       logger.info(`🚀 服务器运行在 ${config.server.host}:${config.server.port}`);
       logger.info(`📚 API文档: http://${config.server.host}:${config.server.port}/api`);

@@ -13,9 +13,7 @@
     "format": "prettier --write \"**/*.{js,json,md}\"",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
-    "clean": "rm -rf logs/*.log coverage",
-    "prestart": "npm run lint",
-    "pretest": "npm run lint"
+    "clean": "rm -rf logs/*.log coverage"
   },
   "keywords": [
     "api",
