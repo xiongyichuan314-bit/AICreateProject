@@ -3,21 +3,26 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Prometheus自身监控
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # 应用监控
-  - job_name: 'aicreateproject-app'
+  - job_name: 'node-app'
     static_configs:
-      - targets: ['app:8081']
+      - targets: ['app-simple:8081']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  # 节点监控（如果应用暴露了节点指标）
-  - job_name: 'node'
+  - job_name: 'grafana'
     static_configs:
-      - targets: ['app:8081']
-    metrics_path: '/node-metrics'
-    scrape_interval: 15s
+      - targets: ['grafana-simple:3000']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
