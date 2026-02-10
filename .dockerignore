@@ -1,0 +1,14 @@
+# Docker忽略文件
+data/grafana/csv
+data/grafana/pdf
+data/grafana/plugins
+data/grafana/png
+data/prometheus
+logs/
+node_modules/
+.git/
+*.log
+.DS_Store
+.env.local
+.env.development
+.env.test

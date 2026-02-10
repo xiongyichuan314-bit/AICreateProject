@@ -8,25 +8,36 @@ const { simpleParser } = require('mailparser');
 
 class QQMailService {
   constructor() {
-    // 配置信息 - 实际使用时应该从环境变量读取
+    // 配置信息 - 延迟加载，在实际使用时从环境变量读取
     this.config = {
       host: 'imap.qq.com',
       port: 993,
       secure: true,
-      user: process.env.QQ_EMAIL_USER || '',
-      password: process.env.QQ_EMAIL_PASSWORD || '',
-      // QQ邮箱通常使用PLAIN或LOGIN认证
-      // 不要设置authMethod，让imap库自动选择
+      // user和password将在getConfig()中动态获取
     };
     
-    this.isConfigured = this.config.user && this.config.password;
-    
-    // 调试信息
-    if (this.isConfigured) {
-      console.log('QQ邮箱服务已配置，用户:', this.config.user.substring(0, 3) + '***@qq.com');
-    } else {
-      console.log('QQ邮箱服务未配置，将使用模拟数据');
-    }
+    // 不立即检查配置，延迟到实际使用时
+  }
+
+  /**
+   * 获取当前配置（动态从环境变量读取）
+   */
+  getConfig() {
+    return {
+      host: this.config.host,
+      port: this.config.port,
+      secure: this.config.secure,
+      user: process.env.QQ_EMAIL_USER || '',
+      password: process.env.QQ_EMAIL_PASSWORD || '',
+    };
+  }
+
+  /**
+   * 检查是否已配置
+   */
+  isConfigured() {
+    const config = this.getConfig();
+    return config.user && config.password;
   }
 
   /**
@@ -35,7 +46,7 @@ class QQMailService {
    * @returns {Promise<Array>} 邮件列表
    */
   async getRecentEmails(limit = 3) {
-    if (!this.isConfigured) {
+    if (!this.isConfigured()) {
       console.warn('QQ邮箱未配置，返回空数组');
       return []; // 不返回模拟数据，返回空数组
     }
@@ -87,12 +98,13 @@ class QQMailService {
    */
   async fetchEmailsWithParser(limit) {
     return new Promise((resolve, reject) => {
+    const config = this.getConfig();
     const imap = new Imap({
-      user: this.config.user,
-      password: this.config.password,
-      host: this.config.host,
-      port: this.config.port,
-      tls: this.config.secure,
+      user: config.user,
+      password: config.password,
+      host: config.host,
+      port: config.port,
+      tls: config.secure,
       tlsOptions: { rejectUnauthorized: false },
       authTimeout: 10000, // 10秒认证超时
       autotls: 'always' // 始终使用TLS
@@ -421,11 +433,13 @@ class QQMailService {
    * @returns {Object} 配置状态
    */
   getConfigStatus() {
+    const config = this.getConfig();
+    const isConfigured = this.isConfigured();
     return {
-      configured: this.isConfigured,
-      user: this.config.user ? `${this.config.user.substring(0, 3)}***@qq.com` : '未配置',
-      host: this.config.host,
-      port: this.config.port
+      configured: isConfigured ? config.password : '', // 保持向后兼容
+      user: config.user ? `${config.user.substring(0, 3)}***@qq.com` : '未配置',
+      host: config.host,
+      port: config.port
     };
   }
 }

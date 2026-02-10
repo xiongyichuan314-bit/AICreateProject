@@ -3,6 +3,9 @@
  * 重构后的Express服务器
  */
 
+// 首先加载环境变量 - 确保在所有模块引入之前
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

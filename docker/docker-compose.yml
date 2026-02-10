@@ -1,0 +1,96 @@
+# AICreateProject Docker Compose 配置
+# 统一管理四个服务：应用API、前端、Prometheus、Grafana
+# 版本：3.8
+
+version: '3.8'
+
+services:
+  # 应用API服务
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: aicreateproject-app
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    env_file:
+      - ../.env
+    environment:
+      - DB_PATH=/app/data/data.db
+      - NODE_ENV=production
+    volumes:
+      - ../data/db:/app/data
+    networks:
+      - aicreateproject-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - prometheus
+
+  # 前端Nginx服务
+  frontend:
+    image: nginx:alpine
+    container_name: aicreateproject-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ../src/client:/usr/share/nginx/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - aicreateproject-network
+    depends_on:
+      - app
+
+  # Prometheus监控服务
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aicreateproject-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../data/prometheus:/prometheus
+    networks:
+      - aicreateproject-network
+
+  # Grafana数据可视化服务
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aicreateproject-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      # 移除插件安装，避免网络下载问题
+      # - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ../data/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - aicreateproject-network
+    depends_on:
+      - prometheus
+
+# 自定义网络
+networks:
+  aicreateproject-network:
+    driver: bridge
+    name: aicreateproject-network
+
+# 数据卷定义（可选）
+volumes:
+  app-data:
+  prometheus-data:
+  grafana-data:
